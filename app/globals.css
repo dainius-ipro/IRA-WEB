@@ -1,0 +1,236 @@
+/* app/globals.css */
+/* IRA Web Platform - Global Styles */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS Variables */
+:root {
+  /* IRA Brand Colors */
+  --ira-red: #E10600;
+  --ira-carbon: #15151E;
+  --ira-gold: #FFD700;
+  
+  /* Speed Heatmap */
+  --speed-slow: #22C55E;
+  --speed-medium: #F59E0B;
+  --speed-fast: #EF4444;
+  
+  /* Semantic */
+  --background: #0A0A0F;
+  --foreground: #FAFAFA;
+  --muted: #3D3D4D;
+  --muted-foreground: #A8A8B8;
+  --border: #2A2A36;
+  --ring: #E10600;
+}
+
+/* Base Styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-ira-carbon-900 text-white antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-ira-carbon-800;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ira-carbon-600 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ira-carbon-500;
+  }
+  
+  /* Selection */
+  ::selection {
+    @apply bg-ira-red text-white;
+  }
+}
+
+/* Component Styles */
+@layer components {
+  /* Racing Button */
+  .btn-racing {
+    @apply relative inline-flex items-center justify-center px-6 py-3;
+    @apply bg-ira-red text-white font-bold uppercase tracking-wider;
+    @apply rounded-lg transition-all duration-200;
+    @apply hover:bg-ira-red-600 hover:shadow-ira active:scale-95;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-racing::before {
+    content: '';
+    @apply absolute inset-0 rounded-lg;
+    @apply bg-gradient-to-r from-transparent via-white/10 to-transparent;
+    @apply opacity-0 transition-opacity duration-200;
+  }
+  
+  .btn-racing:hover::before {
+    @apply opacity-100;
+  }
+  
+  /* Ghost Button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2;
+    @apply text-white/70 font-medium;
+    @apply rounded-lg transition-all duration-200;
+    @apply hover:text-white hover:bg-white/10;
+  }
+  
+  /* Card */
+  .card {
+    @apply bg-ira-carbon-800 rounded-xl border border-ira-carbon-700;
+    @apply p-6 transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:border-ira-carbon-600 hover:shadow-lg;
+  }
+  
+  /* Input */
+  .input {
+    @apply w-full px-4 py-3 rounded-lg;
+    @apply bg-ira-carbon-800 border border-ira-carbon-600;
+    @apply text-white placeholder:text-ira-carbon-400;
+    @apply focus:outline-none focus:ring-2 focus:ring-ira-red focus:border-transparent;
+    @apply transition-all duration-200;
+  }
+  
+  /* Racing Stripe Accent */
+  .racing-stripe {
+    @apply relative overflow-hidden;
+  }
+  
+  .racing-stripe::after {
+    content: '';
+    @apply absolute top-0 bottom-0 right-0 w-1;
+    @apply bg-ira-red;
+  }
+  
+  /* Speed Badge */
+  .badge-speed-slow {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-bold;
+    @apply bg-speed-slow/20 text-speed-slow;
+  }
+  
+  .badge-speed-medium {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-bold;
+    @apply bg-speed-medium/20 text-speed-medium;
+  }
+  
+  .badge-speed-fast {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-bold;
+    @apply bg-speed-fast/20 text-speed-fast;
+  }
+  
+  /* Lap Time Display */
+  .lap-time {
+    @apply font-mono text-2xl font-bold tracking-tight;
+  }
+  
+  .lap-time-best {
+    @apply text-ira-gold;
+  }
+  
+  .lap-time-delta-faster {
+    @apply text-speed-slow;
+  }
+  
+  .lap-time-delta-slower {
+    @apply text-speed-fast;
+  }
+  
+  /* Carbon Fiber Pattern */
+  .carbon-pattern {
+    @apply bg-carbon-fiber;
+  }
+  
+  /* Glass Effect */
+  .glass {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+  
+  /* Glow Effects */
+  .glow-red {
+    box-shadow: 0 0 20px rgba(225, 6, 0, 0.3);
+  }
+  
+  .glow-gold {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* Utility Classes */
+@layer utilities {
+  /* Text Gradient */
+  .text-gradient-ira {
+    @apply bg-gradient-to-r from-ira-red to-ira-gold bg-clip-text text-transparent;
+  }
+  
+  /* Number styling for telemetry */
+  .number-display {
+    @apply font-mono tabular-nums;
+  }
+  
+  /* Pulse animation for live indicators */
+  .pulse-live {
+    animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulse-live {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
+
+/* Animation Classes */
+.animate-in {
+  animation: animate-in 0.5s ease-out forwards;
+}
+
+@keyframes animate-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  @apply animate-in;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
