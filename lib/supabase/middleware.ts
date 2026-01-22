@@ -1,15 +1,8 @@
-// lib/supabase/middleware.ts
-// Middleware helper for Supabase auth
-
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
-type CookieToSet = {
-  name: string
-  value: string
-  options?: any
-}
+type CookieToSet = { name: string; value: string; options?: any }
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -22,25 +15,17 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-
         setAll(cookiesToSet: CookieToSet[]) {
-          // NOTE/compiler fix:
-          // NextRequest.cookies.set supports only (name, value) in this runtime.
-          // Options are supported only on Response cookies.
-
+          // NextRequest.cookies.set accepts only (name, value) in this runtime
           try {
-            cookiesToSet.forEach((c: CookieToSet) => {
-              request.cookies.set(c.name, c.value)
-            })
-          } catch {
-            // Some environments disallow mutating request cookies - ignore safely.
-          }
+            cookiesToSet.forEach((c) => request.cookies.set(c.name, c.value))
+          } catch {}
 
           supabaseResponse = NextResponse.next({ request })
 
-          cookiesToSet.forEach((c: CookieToSet) => {
+          cookiesToSet.forEach((c) =>
             supabaseResponse.cookies.set(c.name, c.value, c.options)
-          })
+          )
         },
       },
     }
@@ -50,7 +35,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protected routes
   const protectedPaths = ['/app', '/settings', '/analysis']
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
@@ -63,7 +47,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Auth pages
   const authPaths = ['/login', '/signup']
   const isAuthPath = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
