@@ -31,17 +31,25 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
     notFound()
   }
 
+  // Type assertion for session with relations
+  const sessionData = session as any
+  const laps = (sessionData.laps || []) as any[]
+
   // Fetch telemetry points for all laps
-  const lapIds = session.laps?.map((l: any) => l.id) || []
+  const lapIds = laps.map((l: any) => l.id)
   
-  const { data: telemetryPoints } = await supabase
-    .from('telemetry_points')
-    .select('*')
-    .in('lap_id', lapIds)
-    .order('timestamp', { ascending: true })
+  let telemetryPoints: any[] = []
+  if (lapIds.length > 0) {
+    const { data } = await supabase
+      .from('telemetry_points')
+      .select('*')
+      .in('lap_id', lapIds)
+      .order('timestamp', { ascending: true })
+    telemetryPoints = data || []
+  }
 
   // Sort laps by lap number
-  const sortedLaps = session.laps?.sort((a: any, b: any) => a.lap_number - b.lap_number) || []
+  const sortedLaps = [...laps].sort((a: any, b: any) => a.lap_number - b.lap_number)
 
   return (
     <div className="h-full flex flex-col">
@@ -58,10 +66,10 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {session.name || session.track?.name || 'Session Analysis'}
+              {sessionData.name || sessionData.track?.name || 'Session Analysis'}
             </h1>
             <p className="text-white/60">
-              {session.track?.name && `${session.track.name}, ${session.track.country}`}
+              {sessionData.track?.name && `${sessionData.track.name}, ${sessionData.track.country}`}
               {' • '}
               {sortedLaps.length} laps
             </p>
@@ -72,9 +80,9 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
       {/* Analysis Content */}
       <div className="flex-1 overflow-hidden">
         <AnalysisView 
-          session={session}
+          session={sessionData}
           laps={sortedLaps}
-          telemetryPoints={telemetryPoints || []}
+          telemetryPoints={telemetryPoints}
           initialTab={searchParams.tab}
           initialLapId={searchParams.lap}
         />
