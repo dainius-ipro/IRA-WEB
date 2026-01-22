@@ -5,10 +5,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
+type CookieToSet = {
+  name: string
+  value: string
+  options?: any
+}
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,18 +22,25 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
-          type CookieToSet = { name: string; value: string; options?: any }
-          cookiesToSet.forEach((c: CookieToSet) =>
-          cookieStore.set(c.name, c.value, c.options)
-          )
-          )
-          supabaseResponse = NextResponse.next({
-            request,
+
+        setAll(cookiesToSet: CookieToSet[]) {
+          // 1) Update request cookies (so Supabase sees fresh cookies immediately)
+          try {
+            cookiesToSet.forEach((c: CookieToSet) => {
+              request.cookies.set(c.name, c.value, c.options)
+            })
+          } catch {
+            // Some Next.js environments may disallow mutating request cookies.
+            // It's safe to ignore; response cookies will still be set.
+          }
+
+          // 2) Create a new response with updated request
+          supabaseResponse = NextResponse.next({ request })
+
+          // 3) Set cookies on the response
+          cookiesToSet.forEach((c: CookieToSet) => {
+            supabaseResponse.cookies.set(c.name, c.value, c.options)
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
         },
       },
     }
@@ -45,7 +56,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = ['/app', '/settings', '/analysis']
-  const isProtectedPath = protectedPaths.some(path => 
+  const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
@@ -58,7 +69,7 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect logged-in users away from auth pages
   const authPaths = ['/login', '/signup']
-  const isAuthPath = authPaths.some(path => 
+  const isAuthPath = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
@@ -67,7 +78,6 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/app'
     return NextResponse.redirect(url)
   }
-
 
   return supabaseResponse
 }
