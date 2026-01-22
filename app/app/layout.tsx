@@ -1,139 +1,76 @@
-// app/app/layout.tsx
-// Dashboard layout with sidebar navigation
+// app/layout.tsx
+// Root layout for IRA Web Platform
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { 
-  LayoutDashboard, 
-  FolderOpen, 
-  Map, 
-  BarChart3, 
-  Brain,
-  Trophy,
-  Settings,
-  LogOut,
-  User,
-  ChevronDown
-} from 'lucide-react'
+import type { Metadata, Viewport } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import './globals.css'
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createServerSupabaseClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Fetch user profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  return (
-    <div className="min-h-screen bg-ira-carbon-900 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-ira-carbon-800 border-r border-ira-carbon-700 flex flex-col">
-        {/* Logo */}
-        <div className="p-4 border-b border-ira-carbon-700">
-          <Link href="/app" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-ira-red rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">IRA</span>
-            </div>
-            <span className="text-white font-bold">Racing Analytics</span>
-          </Link>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-1">
-            <NavLink href="/app" icon={<LayoutDashboard className="w-5 h-5" />}>
-              Dashboard
-            </NavLink>
-            <NavLink href="/app/sessions" icon={<FolderOpen className="w-5 h-5" />}>
-              Sessions
-            </NavLink>
-            <NavLink href="/app/tracks" icon={<Map className="w-5 h-5" />}>
-              Tracks
-            </NavLink>
-            <NavLink href="/app/analysis" icon={<BarChart3 className="w-5 h-5" />}>
-              Analysis
-            </NavLink>
-            <NavLink href="/app/coaching" icon={<Brain className="w-5 h-5" />}>
-              AI Coaching
-            </NavLink>
-            <NavLink href="/app/achievements" icon={<Trophy className="w-5 h-5" />}>
-              Achievements
-            </NavLink>
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-ira-carbon-700">
-            <NavLink href="/app/settings" icon={<Settings className="w-5 h-5" />}>
-              Settings
-            </NavLink>
-          </div>
-        </nav>
-
-        {/* User Profile */}
-        <div className="p-4 border-t border-ira-carbon-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-ira-carbon-600 flex items-center justify-center">
-              {profile?.avatar_url ? (
-                <img 
-                  src={profile.avatar_url} 
-                  alt="" 
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-5 h-5 text-white/60" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {profile?.display_name || profile?.full_name || 'Driver'}
-              </p>
-              <p className="text-xs text-white/40 truncate">
-                {user.email}
-              </p>
-            </div>
-            <button className="p-2 rounded-lg hover:bg-ira-carbon-700 transition-colors">
-              <ChevronDown className="w-4 h-4 text-white/40" />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
-  )
+export const metadata: Metadata = {
+  title: {
+    default: 'IRA - Intelligent Racing Analytics',
+    template: '%s | IRA',
+  },
+  description: 'Transform karting telemetry into improvements. AI coaching, track visualization, lap analysis for racing drivers and families.',
+  keywords: ['karting', 'telemetry', 'racing', 'analytics', 'AI coaching', 'lap time', 'mychron'],
+  authors: [{ name: 'Ipro Racing S.L.', url: 'https://ira.ipro.cat' }],
+  creator: 'Dainius Jarutis',
+  publisher: 'Ipro Racing S.L.',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://ira.ipro.cat',
+    siteName: 'IRA - Intelligent Racing Analytics',
+    title: 'IRA - Intelligent Racing Analytics',
+    description: 'Transform karting telemetry into improvements. AI coaching for racing families.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'IRA - Intelligent Racing Analytics',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'IRA - Intelligent Racing Analytics',
+    description: 'Transform karting telemetry into improvements.',
+    images: ['/og-image.png'],
+  },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon-16x16.png',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
 }
 
-function NavLink({ 
-  href, 
-  icon, 
-  children 
-}: { 
-  href: string
-  icon: React.ReactNode
-  children: React.ReactNode 
-}) {
+export const viewport: Viewport = {
+  themeColor: '#15151E',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
-    <Link 
-      href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-ira-carbon-700 transition-colors"
+    <html 
+      lang="en" 
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
     >
-      {icon}
-      <span>{children}</span>
-    </Link>
+      <body className="min-h-screen bg-ira-carbon-900 font-sans antialiased">
+        {children}
+      </body>
+    </html>
   )
 }
