@@ -52,7 +52,7 @@ export function AnalysisView({
   const [showBeacons, setShowBeacons] = useState(true)
   const [selectedPoint, setSelectedPoint] = useState<TelemetryPoint | null>(null)
 
-  const handlePointClick = useCallback((point: TelemetryPoint) => {
+  const handlePointClick = useCallback((point: TelemetryPoint | null) => {
     setSelectedPoint(point)
   }, [])
 
