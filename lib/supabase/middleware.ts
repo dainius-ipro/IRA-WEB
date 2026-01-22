@@ -24,20 +24,20 @@ export async function updateSession(request: NextRequest) {
         },
 
         setAll(cookiesToSet: CookieToSet[]) {
-          // 1) Update request cookies (so Supabase sees fresh cookies immediately)
+          // NOTE/compiler fix:
+          // NextRequest.cookies.set supports only (name, value) in this runtime.
+          // Options are supported only on Response cookies.
+
           try {
             cookiesToSet.forEach((c: CookieToSet) => {
-              request.cookies.set(c.name, c.value, c.options)
+              request.cookies.set(c.name, c.value)
             })
           } catch {
-            // Some Next.js environments may disallow mutating request cookies.
-            // It's safe to ignore; response cookies will still be set.
+            // Some environments disallow mutating request cookies - ignore safely.
           }
 
-          // 2) Create a new response with updated request
           supabaseResponse = NextResponse.next({ request })
 
-          // 3) Set cookies on the response
           cookiesToSet.forEach((c: CookieToSet) => {
             supabaseResponse.cookies.set(c.name, c.value, c.options)
           })
@@ -46,15 +46,11 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protected routes - redirect to login if not authenticated
+  // Protected routes
   const protectedPaths = ['/app', '/settings', '/analysis']
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
@@ -67,7 +63,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged-in users away from auth pages
+  // Auth pages
   const authPaths = ['/login', '/signup']
   const isAuthPath = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
