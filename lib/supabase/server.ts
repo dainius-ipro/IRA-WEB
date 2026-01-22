@@ -1,12 +1,12 @@
 // lib/supabase/server.ts
-// Server-side Supabase client for IRA Web
-
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
-export async function createServerSupabaseClient() {
-  const cookieStore = await cookies()
+type CookieToSet = { name: string; value: string; options?: any }
+
+export function createClient() {
+  const cookieStore = cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,15 +16,13 @@ export async function createServerSupabaseClient() {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookiesToSet.forEach((c: CookieToSet) => {
+              cookieStore.set(c.name, c.value, c.options)
+            })
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // The `cookies()` API can throw in some contexts (e.g. during static rendering).
           }
         },
       },
