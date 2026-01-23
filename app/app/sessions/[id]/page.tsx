@@ -1,5 +1,6 @@
 // app/app/sessions/[id]/page.tsx
 // Session detail page with tabs: Laps, Map, Telemetry, AI
+// FIX: Added telemetry fetch error handling and debug stats
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
@@ -76,13 +77,27 @@ export default async function SessionDetailPage({
 
   // Get telemetry points for all laps
   const lapIds = laps.map((l: any) => l.id)
-  const { data: telemetryData } = await supabase
-    .from('telemetry_points')
-    .select('*')
-    .in('lap_id', lapIds.length > 0 ? lapIds : ['none'])
-    .order('timestamp', { ascending: true })
-
-  const telemetryPoints = (telemetryData || []) as any[]
+  
+  let telemetryPoints: any[] = []
+  let telemetryError: string | null = null
+  
+  if (lapIds.length > 0) {
+    // Fetch telemetry - each lap has ~1000-2000 points at 20Hz
+    const { data: telemetryData, error: fetchError } = await supabase
+      .from('telemetry_points')
+      .select('*')
+      .in('lap_id', lapIds)
+      .order('timestamp', { ascending: true })
+      .limit(100000) // Safety limit for large sessions
+    
+    if (fetchError) {
+      console.error('Telemetry fetch error:', fetchError)
+      telemetryError = fetchError.message
+    }
+    
+    telemetryPoints = telemetryData || []
+    console.log(`[Session ${id}] Fetched ${telemetryPoints.length} telemetry points for ${lapIds.length} laps`)
+  }
 
   // Get AI insights
   const { data: aiInsightsData } = await supabase
@@ -93,6 +108,9 @@ export default async function SessionDetailPage({
     .limit(5)
 
   const aiInsights = (aiInsightsData || []) as any[]
+
+  // Count GPS points
+  const gpsPointCount = telemetryPoints.filter(p => p.latitude && p.longitude).length
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -122,7 +140,7 @@ export default async function SessionDetailPage({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="card p-4 text-center">
           <div className="text-3xl font-bold text-white">{session.total_laps || laps.length}</div>
           <div className="text-sm text-white/50">Total Laps</div>
@@ -140,12 +158,31 @@ export default async function SessionDetailPage({
           <div className="text-sm text-white/50">Max Speed (km/h)</div>
         </div>
         <div className="card p-4 text-center">
-          <div className="text-3xl font-bold text-white uppercase text-xs tracking-wider pt-2">
-            {session.data_source || 'Unknown'}
+          <div className={`text-2xl font-bold ${telemetryPoints.length > 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {telemetryPoints.length > 0 ? `${(telemetryPoints.length / 1000).toFixed(1)}k` : '0'}
           </div>
-          <div className="text-sm text-white/50 mt-2">Data Source</div>
+          <div className="text-sm text-white/50">
+            Telemetry
+            {telemetryError && <span className="text-red-400 ml-1">⚠️</span>}
+          </div>
+        </div>
+        <div className="card p-4 text-center">
+          <div className={`text-2xl font-bold ${gpsPointCount > 0 ? 'text-green-500' : 'text-yellow-500'}`}>
+            {gpsPointCount > 0 ? `${(gpsPointCount / 1000).toFixed(1)}k` : '0'}
+          </div>
+          <div className="text-sm text-white/50">GPS Points</div>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {telemetryError && (
+        <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+          <strong>Telemetry Error:</strong> {telemetryError}
+          <p className="text-sm mt-1 text-red-400/70">
+            This might be a Supabase RLS policy issue. Check if telemetry_points table has proper read policies.
+          </p>
+        </div>
+      )}
 
       {/* Tabs Component */}
       <SessionTabs 
