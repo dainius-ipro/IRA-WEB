@@ -29,3 +29,6 @@ export function createClient() {
     }
   )
 }
+
+// Backwards-compatible export (used by app/auth/callback/route.ts)
+export const createServerSupabaseClient = createClient
