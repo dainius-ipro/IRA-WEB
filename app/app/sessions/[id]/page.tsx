@@ -1,9 +1,10 @@
 // app/app/sessions/[id]/page.tsx
-// Session detail page
+// Session detail page with tabs: Laps, Map, Telemetry, AI
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import SessionTabs from './SessionTabs'
 
 function formatLapTime(ms: number | null): string {
   if (!ms) return '--:--.---'
@@ -73,6 +74,26 @@ export default async function SessionDetailPage({
   const laps = (session.laps || []).sort((a: any, b: any) => a.lap_number - b.lap_number)
   const bestLap = laps.find((l: any) => l.is_best)
 
+  // Get telemetry points for all laps
+  const lapIds = laps.map((l: any) => l.id)
+  const { data: telemetryData } = await supabase
+    .from('telemetry_points')
+    .select('*')
+    .in('lap_id', lapIds.length > 0 ? lapIds : ['none'])
+    .order('timestamp', { ascending: true })
+
+  const telemetryPoints = (telemetryData || []) as any[]
+
+  // Get AI insights
+  const { data: aiInsightsData } = await supabase
+    .from('ai_insights')
+    .select('*')
+    .eq('session_id', id)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  const aiInsights = (aiInsightsData || []) as any[]
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -126,79 +147,13 @@ export default async function SessionDetailPage({
         </div>
       </div>
 
-      {/* Laps Table */}
-      <div className="card">
-        <h2 className="text-xl font-bold text-white mb-4">Lap Times</h2>
-        
-        {laps.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-ira-carbon-700">
-                  <th className="text-left py-3 px-4 text-white/50 font-medium">Lap</th>
-                  <th className="text-left py-3 px-4 text-white/50 font-medium">Time</th>
-                  <th className="text-left py-3 px-4 text-white/50 font-medium hidden md:table-cell">S1</th>
-                  <th className="text-left py-3 px-4 text-white/50 font-medium hidden md:table-cell">S2</th>
-                  <th className="text-left py-3 px-4 text-white/50 font-medium hidden md:table-cell">S3</th>
-                  <th className="text-left py-3 px-4 text-white/50 font-medium">Max Speed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {laps.map((lap: any) => (
-                  <tr 
-                    key={lap.id}
-                    className={`border-b border-ira-carbon-700/50 ${
-                      lap.is_best ? 'bg-ira-gold/5' : ''
-                    } ${!lap.is_valid ? 'opacity-50' : ''}`}
-                  >
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-white">
-                        {lap.lap_number}
-                        {lap.is_best && <span className="ml-2 text-ira-gold">⚡</span>}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`font-mono font-bold ${lap.is_best ? 'text-ira-gold' : 'text-white'}`}>
-                        {formatLapTime(lap.lap_time_ms)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector1_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector2_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector3_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-white/70">
-                        {lap.max_speed_kmh ? `${Math.round(lap.max_speed_kmh)} km/h` : '--'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-white/50">
-            No lap data available
-          </div>
-        )}
-      </div>
-
-      {/* AI Analysis Placeholder */}
-      <div className="card mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white">AI Coaching</h2>
-          <span className="text-xs bg-ira-gold/20 text-ira-gold px-2 py-1 rounded">Coming to Web</span>
-        </div>
-        <p className="text-white/60">
-          AI-powered coaching analysis is available in the iOS and Android apps. 
-          Web version coming soon!
-        </p>
-      </div>
+      {/* Tabs Component */}
+      <SessionTabs 
+        laps={laps}
+        telemetryPoints={telemetryPoints}
+        aiInsights={aiInsights}
+        sessionId={id}
+      />
     </div>
   )
 }
