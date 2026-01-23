@@ -1,5 +1,6 @@
 // app/app/sessions/[id]/SessionTabs.tsx
 // Client component for session detail tabs
+// FIX: Added debug logging for GPS data detection
 
 'use client'
 
@@ -59,7 +60,15 @@ export default function SessionTabs({
   ]
 
   const hasGpsData = useMemo(() => {
-    return telemetryPoints.some(p => p.latitude && p.longitude)
+    const gpsPoints = telemetryPoints.filter(p => p.latitude && p.longitude)
+    // Debug logging
+    if (typeof window !== 'undefined') {
+      console.log(`[SessionTabs] Total: ${telemetryPoints.length}, GPS: ${gpsPoints.length}`)
+      if (telemetryPoints.length > 0 && gpsPoints.length === 0) {
+        console.log('[SessionTabs] Sample point:', telemetryPoints[0])
+      }
+    }
+    return gpsPoints.length > 0
   }, [telemetryPoints])
 
   const toggleLapSelection = (lapId: string) => {
@@ -96,6 +105,13 @@ export default function SessionTabs({
           >
             <span>{tab.icon}</span>
             <span>{tab.label}</span>
+            {/* Badge for data availability */}
+            {tab.id === 'map' && (
+              <span className={`ml-1 w-2 h-2 rounded-full ${hasGpsData ? 'bg-green-500' : 'bg-red-500'}`} />
+            )}
+            {tab.id === 'telemetry' && (
+              <span className={`ml-1 w-2 h-2 rounded-full ${telemetryPoints.length > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+            )}
           </button>
         ))}
       </div>
@@ -256,9 +272,17 @@ function MapTab({
           <span className="text-4xl">🗺️</span>
         </div>
         <h3 className="text-xl font-bold text-white mb-2">No GPS Data</h3>
-        <p className="text-white/60">
+        <p className="text-white/60 mb-4">
           This session doesn't have GPS coordinates for track visualization.
         </p>
+        <div className="text-sm text-white/40 max-w-md mx-auto">
+          <p>Debug info:</p>
+          <p>• Total telemetry points: {telemetryPoints.length}</p>
+          <p>• Selected laps: {selectedLapIds.length}</p>
+          {telemetryPoints.length > 0 && (
+            <p>• First point has lat/lng: {telemetryPoints[0].latitude ? 'Yes' : 'No'}</p>
+          )}
+        </div>
       </div>
     )
   }
@@ -301,9 +325,15 @@ function TelemetryTab({
           <span className="text-4xl">📈</span>
         </div>
         <h3 className="text-xl font-bold text-white mb-2">No Telemetry Data</h3>
-        <p className="text-white/60">
+        <p className="text-white/60 mb-4">
           This session doesn't have detailed telemetry data.
         </p>
+        <div className="text-sm text-white/40">
+          <p>Possible causes:</p>
+          <p>• Session not fully processed</p>
+          <p>• Supabase RLS policy blocking access</p>
+          <p>• Data import incomplete</p>
+        </div>
       </div>
     )
   }
