@@ -3,12 +3,18 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 
-export async function POST(request: Request) {
+export async function POST() {
   const supabase = await createServerSupabaseClient()
   
   await supabase.auth.signOut()
   
-  const requestUrl = new URL(request.url)
-  return NextResponse.redirect(`${requestUrl.origin}/login`)
+  // Get origin from headers (works in production)
+  const headersList = await headers()
+  const host = headersList.get('host') || 'iraapp.ipro.cat'
+  const protocol = headersList.get('x-forwarded-proto') || 'https'
+  const origin = `${protocol}://${host}`
+  
+  return NextResponse.redirect(`${origin}/login`)
 }
