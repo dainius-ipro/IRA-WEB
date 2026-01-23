@@ -1,24 +1,28 @@
 // app/login/page.tsx
-// IRA Web - Login Page with Google OAuth
+// IRA Web - Login Page with Google OAuth + OTP
 
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useRef } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { Mail, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, ArrowRight, Loader2, ArrowLeft } from 'lucide-react'
 
 function LoginContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/app'
   
   const [email, setEmail] = useState('')
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [emailSent, setEmailSent] = useState(false)
-
+  const [codeSent, setCodeSent] = useState(false)
+  
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const supabase = getSupabaseClient()
 
   const handleGoogleLogin = async () => {
@@ -40,7 +44,7 @@ function LoginContent() {
     }
   }
 
-  const handleMagicLink = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
@@ -49,14 +53,97 @@ function LoginContent() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${redirect}`,
+          shouldCreateUser: true,
         },
       })
       
       if (error) throw error
-      setEmailSent(true)
+      setCodeSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send magic link')
+      setError(err instanceof Error ? err.message : 'Failed to send code')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) {
+      // Handle paste
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('')
+      const newOtp = [...otpCode]
+      digits.forEach((digit, i) => {
+        if (index + i < 6) {
+          newOtp[index + i] = digit
+        }
+      })
+      setOtpCode(newOtp)
+      const nextIndex = Math.min(index + digits.length, 5)
+      inputRefs.current[nextIndex]?.focus()
+    } else {
+      const newOtp = [...otpCode]
+      newOtp[index] = value.replace(/\D/g, '')
+      setOtpCode(newOtp)
+      
+      // Auto-focus next input
+      if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus()
+      }
+    }
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const code = otpCode.join('')
+    if (code.length !== 6) {
+      setError('Please enter the 6-digit code')
+      return
+    }
+    
+    setIsVerifying(true)
+    setError(null)
+    
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'email',
+      })
+      
+      if (error) throw error
+      
+      // Success! Redirect
+      router.push(redirect)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid code. Please try again.')
+      setOtpCode(['', '', '', '', '', ''])
+      inputRefs.current[0]?.focus()
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleResendCode = async () => {
+    setIsLoading(true)
+    setError(null)
+    setOtpCode(['', '', '', '', '', ''])
+    
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      })
+      
+      if (error) throw error
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code')
     } finally {
       setIsLoading(false)
     }
@@ -119,23 +206,80 @@ function LoginContent() {
               </div>
             )}
 
-            {emailSent ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-ira-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-ira-success" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Check your email</h3>
-                <p className="text-white/60 mb-4">
-                  We sent a magic link to <span className="text-white">{email}</span>
-                </p>
+            {codeSent ? (
+              /* OTP Verification Step */
+              <div>
                 <button 
-                  onClick={() => setEmailSent(false)}
-                  className="text-ira-red hover:text-ira-red-400 text-sm"
+                  onClick={() => {
+                    setCodeSent(false)
+                    setOtpCode(['', '', '', '', '', ''])
+                    setError(null)
+                  }}
+                  className="flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
                 >
-                  Use a different email
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
                 </button>
+                
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 bg-ira-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail className="w-8 h-8 text-ira-red" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Enter verification code</h3>
+                  <p className="text-white/60">
+                    We sent a 6-digit code to<br />
+                    <span className="text-white font-medium">{email}</span>
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyOtp}>
+                  {/* OTP Input */}
+                  <div className="flex justify-center gap-2 mb-6">
+                    {otpCode.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => { inputRefs.current[index] = el }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        className="w-12 h-14 text-center text-2xl font-bold rounded-lg bg-ira-carbon-800 border border-ira-carbon-600 text-white focus:outline-none focus:ring-2 focus:ring-ira-red focus:border-transparent transition-all"
+                        autoFocus={index === 0}
+                      />
+                    ))}
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={isVerifying || otpCode.join('').length !== 6} 
+                    className="w-full btn-racing mb-4"
+                  >
+                    {isVerifying ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Verify & Sign In
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <div className="text-center">
+                  <span className="text-white/40 text-sm">Didn't receive the code? </span>
+                  <button 
+                    onClick={handleResendCode}
+                    disabled={isLoading}
+                    className="text-ira-red hover:text-ira-red-400 text-sm font-medium disabled:opacity-50"
+                  >
+                    {isLoading ? 'Sending...' : 'Resend'}
+                  </button>
+                </div>
               </div>
             ) : (
+              /* Email Input Step */
               <>
                 <button
                   onClick={handleGoogleLogin}
@@ -164,7 +308,7 @@ function LoginContent() {
                   </div>
                 </div>
 
-                <form onSubmit={handleMagicLink}>
+                <form onSubmit={handleSendCode}>
                   <div className="mb-4">
                     <label htmlFor="email" className="block text-sm font-medium text-white/80 mb-2">
                       Email address
@@ -185,7 +329,7 @@ function LoginContent() {
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <>
-                        Send Magic Link
+                        Send Code
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </>
                     )}
