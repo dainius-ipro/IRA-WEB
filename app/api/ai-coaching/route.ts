@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from ‘next/server’
-import { createServerSupabaseClient } from ‘@/lib/supabase/server’
+  import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-const LAMBDA_URL = ‘https://ugo5c26hexgdezdzgikoo27nny0crxvz.lambda-url.eu-north-1.on.aws/’
+const LAMBDA_URL = 'https://ugo5c26hexgdezdzgikoo27nny0crxvz.lambda-url.eu-north-1.on.aws/'
 
 export async function POST(request: NextRequest) {
 try {
