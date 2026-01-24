@@ -1,4 +1,4 @@
-  import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 const LAMBDA_URL = 'https://ugo5c26hexgdezdzgikoo27nny0crxvz.lambda-url.eu-north-1.on.aws/'
@@ -102,6 +102,6 @@ return NextResponse.json({
 ```
 
 } catch (error: any) {
-return NextResponse.json({ error: error.message || ‘Internal error’ }, { status: 500 })
+return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
 }
 }
