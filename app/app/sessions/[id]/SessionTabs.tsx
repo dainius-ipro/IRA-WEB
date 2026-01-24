@@ -1,6 +1,5 @@
 // app/app/sessions/[id]/SessionTabs.tsx
-// Client component for session detail tabs
-// FIX: Added debug logging for GPS data detection
+// Client component with AI Coaching integration
 
 'use client'
 
@@ -9,7 +8,6 @@ import dynamic from 'next/dynamic'
 import { TelemetryCharts } from '@/components/charts'
 import type { Lap, TelemetryPoint } from '@/types/database'
 
-// Dynamic import for TrackMap (needs client-side only)
 const TrackMap = dynamic(
   () => import('@/components/track-map/TrackMap'),
   { 
@@ -47,7 +45,6 @@ export default function SessionTabs({
 }: SessionTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('laps')
   const [selectedLapIds, setSelectedLapIds] = useState<string[]>(() => {
-    // Default to best lap or first lap
     const bestLap = laps.find(l => l.is_best)
     return bestLap ? [bestLap.id] : laps.length > 0 ? [laps[0].id] : []
   })
@@ -60,28 +57,16 @@ export default function SessionTabs({
   ]
 
   const hasGpsData = useMemo(() => {
-    const gpsPoints = telemetryPoints.filter(p => p.latitude && p.longitude)
-    // Debug logging
-    if (typeof window !== 'undefined') {
-      console.log(`[SessionTabs] Total: ${telemetryPoints.length}, GPS: ${gpsPoints.length}`)
-      if (telemetryPoints.length > 0 && gpsPoints.length === 0) {
-        console.log('[SessionTabs] Sample point:', telemetryPoints[0])
-      }
-    }
-    return gpsPoints.length > 0
+    return telemetryPoints.filter(p => p.latitude && p.longitude).length > 0
   }, [telemetryPoints])
 
   const toggleLapSelection = (lapId: string) => {
     setSelectedLapIds(prev => {
       if (prev.includes(lapId)) {
-        // Don't allow deselecting if it's the only one
         if (prev.length === 1) return prev
         return prev.filter(id => id !== lapId)
       } else {
-        // Max 3 laps for comparison
-        if (prev.length >= 3) {
-          return [...prev.slice(1), lapId]
-        }
+        if (prev.length >= 3) return [...prev.slice(1), lapId]
         return [...prev, lapId]
       }
     })
@@ -89,90 +74,38 @@ export default function SessionTabs({
 
   return (
     <div>
-      {/* Tab Navigation */}
       <div className="flex gap-1 p-1 rounded-xl bg-ira-carbon-800 mb-6 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`
-              flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-              ${activeTab === tab.id 
-                ? 'bg-ira-red text-white shadow-lg' 
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-              }
-            `}
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-ira-red text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
           >
             <span>{tab.icon}</span>
             <span>{tab.label}</span>
-            {/* Badge for data availability */}
-            {tab.id === 'map' && (
-              <span className={`ml-1 w-2 h-2 rounded-full ${hasGpsData ? 'bg-green-500' : 'bg-red-500'}`} />
-            )}
-            {tab.id === 'telemetry' && (
-              <span className={`ml-1 w-2 h-2 rounded-full ${telemetryPoints.length > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-            )}
+            {tab.id === 'map' && <span className={`ml-1 w-2 h-2 rounded-full ${hasGpsData ? 'bg-green-500' : 'bg-red-500'}`} />}
+            {tab.id === 'telemetry' && <span className={`ml-1 w-2 h-2 rounded-full ${telemetryPoints.length > 0 ? 'bg-green-500' : 'bg-red-500'}`} />}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
       <div className="card min-h-[400px]">
-        {activeTab === 'laps' && (
-          <LapsTab 
-            laps={laps} 
-            selectedLapIds={selectedLapIds}
-            onToggleLap={toggleLapSelection}
-          />
-        )}
-
-        {activeTab === 'map' && (
-          <MapTab 
-            telemetryPoints={telemetryPoints}
-            laps={laps}
-            selectedLapIds={selectedLapIds}
-            hasGpsData={hasGpsData}
-          />
-        )}
-
-        {activeTab === 'telemetry' && (
-          <TelemetryTab 
-            telemetryPoints={telemetryPoints}
-            laps={laps}
-            selectedLapIds={selectedLapIds}
-          />
-        )}
-
-        {activeTab === 'ai' && (
-          <AITab 
-            aiInsights={aiInsights}
-            sessionId={sessionId}
-          />
-        )}
+        {activeTab === 'laps' && <LapsTab laps={laps} selectedLapIds={selectedLapIds} onToggleLap={toggleLapSelection} />}
+        {activeTab === 'map' && <MapTab telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} hasGpsData={hasGpsData} />}
+        {activeTab === 'telemetry' && <TelemetryTab telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} />}
+        {activeTab === 'ai' && <AITab aiInsights={aiInsights} sessionId={sessionId} />}
       </div>
     </div>
   )
 }
 
-// Laps Tab Component
-function LapsTab({ 
-  laps, 
-  selectedLapIds, 
-  onToggleLap 
-}: { 
-  laps: Lap[]
-  selectedLapIds: string[]
-  onToggleLap: (id: string) => void
-}) {
+function LapsTab({ laps, selectedLapIds, onToggleLap }: { laps: Lap[]; selectedLapIds: string[]; onToggleLap: (id: string) => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">Lap Times</h2>
-        <span className="text-sm text-white/50">
-          Click to select laps for comparison (max 3)
-        </span>
+        <span className="text-sm text-white/50">Click to select laps for comparison (max 3)</span>
       </div>
-      
       {laps.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -191,53 +124,18 @@ function LapsTab({
               {laps.map((lap: any) => {
                 const isSelected = selectedLapIds.includes(lap.id)
                 return (
-                  <tr 
-                    key={lap.id}
-                    onClick={() => onToggleLap(lap.id)}
-                    className={`
-                      border-b border-ira-carbon-700/50 cursor-pointer transition-colors
-                      ${lap.is_best ? 'bg-ira-gold/5' : ''}
-                      ${isSelected ? 'bg-ira-red/10 border-l-2 border-l-ira-red' : ''}
-                      ${!lap.is_valid ? 'opacity-50' : ''}
-                      hover:bg-white/5
-                    `}
-                  >
+                  <tr key={lap.id} onClick={() => onToggleLap(lap.id)} className={`border-b border-ira-carbon-700/50 cursor-pointer transition-colors ${lap.is_best ? 'bg-ira-gold/5' : ''} ${isSelected ? 'bg-ira-red/10 border-l-2 border-l-ira-red' : ''} ${!lap.is_valid ? 'opacity-50' : ''} hover:bg-white/5`}>
                     <td className="py-3 px-4">
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center
-                        ${isSelected ? 'border-ira-red bg-ira-red' : 'border-white/30'}
-                      `}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'border-ira-red bg-ira-red' : 'border-white/30'}`}>
+                        {isSelected && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-white">
-                        {lap.lap_number}
-                        {lap.is_best && <span className="ml-2 text-ira-gold">⚡</span>}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`font-mono font-bold ${lap.is_best ? 'text-ira-gold' : 'text-white'}`}>
-                        {formatLapTime(lap.lap_time_ms)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector1_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector2_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      <span className="font-mono text-white/70">{formatLapTime(lap.sector3_ms)}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-white/70">
-                        {lap.max_speed_kmh ? `${Math.round(lap.max_speed_kmh)} km/h` : '--'}
-                      </span>
-                    </td>
+                    <td className="py-3 px-4"><span className="font-medium text-white">{lap.lap_number}{lap.is_best && <span className="ml-2 text-ira-gold">⚡</span>}</span></td>
+                    <td className="py-3 px-4"><span className={`font-mono font-bold ${lap.is_best ? 'text-ira-gold' : 'text-white'}`}>{formatLapTime(lap.lap_time_ms)}</span></td>
+                    <td className="py-3 px-4 hidden md:table-cell"><span className="font-mono text-white/70">{formatLapTime(lap.sector1_ms)}</span></td>
+                    <td className="py-3 px-4 hidden md:table-cell"><span className="font-mono text-white/70">{formatLapTime(lap.sector2_ms)}</span></td>
+                    <td className="py-3 px-4 hidden md:table-cell"><span className="font-mono text-white/70">{formatLapTime(lap.sector3_ms)}</span></td>
+                    <td className="py-3 px-4"><span className="text-white/70">{lap.max_speed_kmh ? `${Math.round(lap.max_speed_kmh)} km/h` : '--'}</span></td>
                   </tr>
                 )
               })}
@@ -245,172 +143,104 @@ function LapsTab({
           </table>
         </div>
       ) : (
-        <div className="text-center py-12 text-white/50">
-          No lap data available
-        </div>
+        <div className="text-center py-12 text-white/50">No lap data available</div>
       )}
     </div>
   )
 }
 
-// Map Tab Component
-function MapTab({ 
-  telemetryPoints, 
-  laps,
-  selectedLapIds,
-  hasGpsData 
-}: { 
-  telemetryPoints: TelemetryPoint[]
-  laps: Lap[]
-  selectedLapIds: string[]
-  hasGpsData: boolean
-}) {
+function MapTab({ telemetryPoints, laps, selectedLapIds, hasGpsData }: { telemetryPoints: TelemetryPoint[]; laps: Lap[]; selectedLapIds: string[]; hasGpsData: boolean }) {
   if (!hasGpsData) {
     return (
       <div className="text-center py-16">
-        <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-4xl">🗺️</span>
-        </div>
+        <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-4xl">🗺️</span></div>
         <h3 className="text-xl font-bold text-white mb-2">No GPS Data</h3>
-        <p className="text-white/60 mb-4">
-          This session doesn't have GPS coordinates for track visualization.
-        </p>
-        <div className="text-sm text-white/40 max-w-md mx-auto">
-          <p>Debug info:</p>
-          <p>• Total telemetry points: {telemetryPoints.length}</p>
-          <p>• Selected laps: {selectedLapIds.length}</p>
-          {telemetryPoints.length > 0 && (
-            <p>• First point has lat/lng: {telemetryPoints[0].latitude ? 'Yes' : 'No'}</p>
-          )}
-        </div>
+        <p className="text-white/60">This session does not have GPS coordinates.</p>
       </div>
     )
   }
-
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">Track Map</h2>
-        <span className="text-sm text-white/50">
-          Speed heatmap: 🟢 Slow → 🟡 Mid → 🔴 Fast
-        </span>
+        <span className="text-sm text-white/50">Speed heatmap: 🟢 Slow → 🟡 Mid → 🔴 Fast</span>
       </div>
-      <TrackMap 
-        telemetryPoints={telemetryPoints}
-        laps={laps}
-        selectedLapIds={selectedLapIds}
-        showHeatmap={true}
-        showBeacons={true}
-        interactive={true}
-        className="h-[500px]"
-      />
+      <TrackMap telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} showHeatmap={true} showBeacons={true} interactive={true} className="h-[500px]" />
     </div>
   )
 }
 
-// Telemetry Tab Component
-function TelemetryTab({ 
-  telemetryPoints, 
-  laps,
-  selectedLapIds 
-}: { 
-  telemetryPoints: TelemetryPoint[]
-  laps: Lap[]
-  selectedLapIds: string[]
-}) {
+function TelemetryTab({ telemetryPoints, laps, selectedLapIds }: { telemetryPoints: TelemetryPoint[]; laps: Lap[]; selectedLapIds: string[] }) {
   if (telemetryPoints.length === 0) {
     return (
       <div className="text-center py-16">
-        <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-4xl">📈</span>
-        </div>
+        <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-4xl">📈</span></div>
         <h3 className="text-xl font-bold text-white mb-2">No Telemetry Data</h3>
-        <p className="text-white/60 mb-4">
-          This session doesn't have detailed telemetry data.
-        </p>
-        <div className="text-sm text-white/40">
-          <p>Possible causes:</p>
-          <p>• Session not fully processed</p>
-          <p>• Supabase RLS policy blocking access</p>
-          <p>• Data import incomplete</p>
-        </div>
+        <p className="text-white/60">This session does not have telemetry data.</p>
       </div>
     )
   }
-
-  return (
-    <div className="h-[500px]">
-      <TelemetryCharts 
-        telemetryPoints={telemetryPoints}
-        laps={laps}
-        selectedLapIds={selectedLapIds}
-      />
-    </div>
-  )
+  return <div className="h-[500px]"><TelemetryCharts telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} /></div>
 }
 
-// AI Tab Component
-function AITab({ 
-  aiInsights,
-  sessionId 
-}: { 
-  aiInsights: any[]
-  sessionId: string
-}) {
-  if (aiInsights.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-4xl">🤖</span>
-        </div>
-        <h3 className="text-xl font-bold text-white mb-2">AI Coaching</h3>
-        <p className="text-white/60 mb-6">
-          No AI analysis available yet for this session.
-        </p>
-        <button className="btn-racing">
-          Generate AI Analysis
-        </button>
-        <p className="text-white/40 text-sm mt-4">
-          AI will analyze your lap data and provide personalized coaching tips.
-        </p>
-      </div>
-    )
+function AITab({ aiInsights, sessionId }: { aiInsights: any[]; sessionId: string }) {
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [insights, setInsights] = useState(aiInsights)
+
+  const generateAnalysis = async (analysisType: string = 'general') => {
+    setIsGenerating(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/ai-coaching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, analysisType }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to generate analysis')
+      if (data.insight) setInsights(prev => [data.insight, ...prev])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-white mb-4">AI Coaching Insights</h2>
-      <div className="space-y-4">
-        {aiInsights.map((insight: any) => (
-          <div 
-            key={insight.id}
-            className="p-4 rounded-lg bg-ira-carbon-700/50 border border-ira-carbon-600"
-          >
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">
-                {insight.insight_type === 'braking' ? '🛑' 
-                  : insight.insight_type === 'apex' ? '🎯'
-                  : insight.insight_type === 'throttle' ? '⚡'
-                  : '💡'}
-              </span>
-              <div className="flex-1">
-                <h3 className="font-semibold text-white mb-1">{insight.title}</h3>
-                <p className="text-white/70 text-sm">{insight.summary}</p>
-                {insight.recommendations && (
-                  <div className="mt-3 p-3 rounded bg-ira-carbon-800">
-                    <div className="text-xs text-white/50 mb-2">Recommendations:</div>
-                    <p className="text-white/80 text-sm">{
-                      typeof insight.recommendations === 'string' 
-                        ? insight.recommendations 
-                        : JSON.stringify(insight.recommendations)
-                    }</p>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-white">AI Coaching</h2>
+        <button onClick={() => generateAnalysis('general')} disabled={isGenerating} className="px-4 py-2 rounded-lg bg-ira-red text-white font-medium hover:bg-ira-red/90 disabled:opacity-50 transition-colors">
+          {isGenerating ? <span className="flex items-center gap-2"><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />Analyzing...</span> : '🤖 Analyze Session'}
+        </button>
+      </div>
+      {error && <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">{error}</div>}
+      {insights.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="w-20 h-20 bg-ira-carbon-700 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-4xl">🤖</span></div>
+          <h3 className="text-xl font-bold text-white mb-2">AI Coaching</h3>
+          <p className="text-white/60 mb-6">Get personalized coaching tips based on your telemetry data.</p>
+          <button onClick={() => generateAnalysis('general')} disabled={isGenerating} className="px-6 py-3 rounded-lg bg-ira-red text-white font-medium hover:bg-ira-red/90 disabled:opacity-50">Generate AI Analysis</button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {insights.map((insight: any, index: number) => (
+            <div key={insight.id || index} className="p-4 rounded-lg bg-ira-carbon-700/50 border border-ira-carbon-600">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">{insight.insight_type === 'braking_zones' ? '🛑' : insight.insight_type === 'racing_line' ? '🎯' : insight.insight_type === 'consistency' ? '📊' : '💡'}</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-white">{insight.title || 'AI Coaching'}</h3>
+                    <span className="text-xs text-white/40">{insight.created_at ? new Date(insight.created_at).toLocaleDateString() : ''}</span>
                   </div>
-                )}
+                  <div className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">{insight.detailed_analysis || insight.summary}</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
