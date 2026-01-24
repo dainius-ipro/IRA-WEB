@@ -2,6 +2,7 @@
 // Root layout for IRA Web Platform
 
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
@@ -11,8 +12,17 @@ export const metadata: Metadata = {
     default: 'IRA - Intelligent Racing Analytics',
     template: '%s | IRA',
   },
-  description: 'Transform karting telemetry into improvements. AI coaching, track visualization, lap analysis for racing drivers and families.',
-  keywords: ['karting', 'telemetry', 'racing', 'analytics', 'AI coaching', 'lap time', 'mychron'],
+  description:
+    'Transform karting telemetry into improvements. AI coaching, track visualization, lap analysis for racing drivers and families.',
+  keywords: [
+    'karting',
+    'telemetry',
+    'racing',
+    'analytics',
+    'AI coaching',
+    'lap time',
+    'mychron',
+  ],
   authors: [{ name: 'Ipro Racing S.L.', url: 'https://ira.ipro.cat' }],
   creator: 'Dainius Jarutis',
   publisher: 'Ipro Racing S.L.',
@@ -26,7 +36,8 @@ export const metadata: Metadata = {
     url: 'https://ira.ipro.cat',
     siteName: 'IRA - Intelligent Racing Analytics',
     title: 'IRA - Intelligent Racing Analytics',
-    description: 'Transform karting telemetry into improvements. AI coaching for racing families.',
+    description:
+      'Transform karting telemetry into improvements. AI coaching for racing families.',
     images: [
       {
         url: '/og-image.png',
@@ -63,11 +74,28 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html 
-      lang="en" 
+    <html
+      lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
+      {/* Google Analytics */}
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-85YM4N7MNS"
+        strategy="afterInteractive"
+      />
+
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-85YM4N7MNS', {
+            page_path: window.location.pathname,
+          });
+        `}
+      </Script>
+
       <body className="min-h-screen bg-ira-carbon-900 font-sans antialiased">
         {children}
       </body>
