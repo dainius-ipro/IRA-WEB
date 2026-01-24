@@ -1,0 +1,123 @@
+// app/api/ai-coaching/route.ts
+// AI Coaching API - calls Lambda for analysis
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+
+const LAMBDA_URL = 'https://ugo5c26hexgdezdzgikoo27nny0crxvz.lambda-url.eu-north-1.on.aws/'
+
+interface LambdaRequest {
+  sessionData: {
+    track?: string
+    driver?: string
+    bestLap?: number
+    avgLap?: number
+    totalLaps?: number
+    topSpeed?: number
+    avgSpeed?: number
+    conditions?: string
+    lapNumber?: number
+    distance?: number
+  }
+  analysisType: string
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { sessionId, lapId, analysisType = 'general' } = body
+
+    // Get session data
+    const { data: session } = await supabase
+      .from('sessions')
+      .select('*, tracks(name), laps(id, lap_number, lap_time_ms, max_speed_kmh, avg_speed_kmh)')
+      .eq('id', sessionId)
+      .single()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    // Get specific lap if provided
+    let targetLap = null
+    if (lapId) {
+      targetLap = (session.laps as any[])?.find((l: any) => l.id === lapId)
+    } else {
+      targetLap = (session.laps as any[])?.find((l: any) => l.lap_time_ms === session.best_lap_time_ms)
+    }
+
+    // Prepare Lambda request
+    const lambdaRequest: LambdaRequest = {
+      sessionData: {
+        track: (session.tracks as any)?.name || session.name || 'Unknown Track',
+        driver: 'Driver',
+        bestLap: session.best_lap_time_ms ? session.best_lap_time_ms / 1000 : undefined,
+        avgLap: targetLap?.lap_time_ms ? targetLap.lap_time_ms / 1000 : undefined,
+        totalLaps: session.total_laps || (session.laps as any[])?.length,
+        topSpeed: targetLap?.max_speed_kmh,
+        avgSpeed: targetLap?.avg_speed_kmh,
+        lapNumber: targetLap?.lap_number,
+      },
+      analysisType,
+    }
+
+    // Call Lambda
+    const lambdaResponse = await fetch(LAMBDA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lambdaRequest),
+    })
+
+    const lambdaData = await lambdaResponse.json()
+
+    if (!lambdaData.success) {
+      return NextResponse.json({ error: lambdaData.error || 'Analysis failed' }, { status: 500 })
+    }
+
+    // Save insight to database
+    const { data: insight, error: insertError } = await supabase
+      .from('ai_insights')
+      .insert({
+        session_id: sessionId,
+        lap_id: lapId || null,
+        user_id: user.id,
+        insight_type: analysisType,
+        title: getInsightTitle(analysisType),
+        summary: lambdaData.analysis?.substring(0, 500),
+        detailed_analysis: lambdaData.analysis,
+        model_version: lambdaData.model || 'claude',
+        tokens_used: (lambdaData.usage?.input_tokens || 0) + (lambdaData.usage?.output_tokens || 0),
+      })
+      .select()
+      .single()
+
+    return NextResponse.json({
+      success: true,
+      analysis: lambdaData.analysis,
+      insight: insight,
+      usage: lambdaData.usage,
+    })
+
+  } catch (error: any) {
+    console.error('AI Coaching error:', error)
+    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+  }
+}
+
+function getInsightTitle(type: string): string {
+  const titles: Record<string, string> = {
+    general: 'Session Analysis',
+    lap_comparison: 'Lap Comparison',
+    braking_zones: 'Braking Analysis',
+    racing_line: 'Racing Line Tips',
+    consistency: 'Consistency Analysis',
+  }
+  return titles[type] || 'AI Coaching'
+}
