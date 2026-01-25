@@ -1,6 +1,3 @@
-// app/login/page.tsx
-// IRA Web - Login Page with Google OAuth + OTP
-
 'use client'
 
 import { useState, Suspense, useRef } from 'react'
