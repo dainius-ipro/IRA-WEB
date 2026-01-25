@@ -81,7 +81,7 @@ export default function RootLayout({
     >
       {/* Google Analytics */}
       <Script
-        src="https://www.googletagmanager.com/gtag/js?id=G-85YM4N7MNS"
+        src="https://www.googletagmanager.com/gtag/js?id=process.env.NEXT_PUBLIC_GA4_ID);
         strategy="afterInteractive"
       />
 
@@ -90,7 +90,7 @@ export default function RootLayout({
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-85YM4N7MNS', {
+          gtag('config', process.env.NEXT_PUBLIC_GA4_ID);
             page_path: window.location.pathname,
           });
         `}
