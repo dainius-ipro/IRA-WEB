@@ -92,7 +92,7 @@ export default function LandingPage() {
       <footer className="py-12 px-4 border-t border-white/10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-white/50 text-sm">
-            © 2026 Ipro Racing S.L. Barcelona, Spain
+            © 2026 Ipro Racing, Barcelona, Spain
           </div>
           <div className="flex gap-6">
             <Link href="/privacy" className="text-white/50 hover:text-white text-sm">Privacy</Link>
