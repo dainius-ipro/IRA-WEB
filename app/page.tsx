@@ -88,7 +88,7 @@ export default function HomePage() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in" style={{ animationDelay: '300ms' }}>
             <Link href="/login" className="btn-racing text-lg px-8 py-4">
-              Start Free Trial
+              Start Free
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
             <button className="btn-ghost text-lg px-8 py-4 group">
