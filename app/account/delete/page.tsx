@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
 export default function DeleteAccountPage() {
@@ -12,7 +12,11 @@ export default function DeleteAccountPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,30 +34,42 @@ export default function DeleteAccountPage() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        setError('Please login first to delete your account')
+        setError('You must be logged in to delete your account')
+        setIsLoading(false)
         return
       }
 
       if (user.email !== email) {
         setError('Email does not match your account')
+        setIsLoading(false)
         return
       }
 
-      // Delete user data (sessions, laps, telemetry will cascade)
-      await supabase.from('sessions').delete().eq('user_id', user.id)
-      await supabase.from('ai_insights').delete().eq('user_id', user.id)
-      await supabase.from('profiles').delete().eq('id', user.id)
+      // Call the delete account edge function
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account')
+      }
 
       // Sign out
       await supabase.auth.signOut()
-
       setSuccess(true)
       
       // Redirect after 3 seconds
-      setTimeout(() => router.push('/'), 3000)
+      setTimeout(() => {
+        router.push('/')
+      }, 3000)
 
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete account')
+    } catch (err) {
+      setError('Failed to delete account. Please contact support.')
+      console.error('Delete account error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -61,79 +77,77 @@ export default function DeleteAccountPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-ira-carbon-900 flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h1 className="text-2xl font-bold text-white mb-2">Account Deleted</h1>
-          <p className="text-white/60">Your account and all data has been permanently deleted.</p>
-          <p className="text-white/40 text-sm mt-4">Redirecting to home...</p>
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center text-white">
+          <h1 className="text-2xl font-bold mb-4">Account Deleted</h1>
+          <p className="text-gray-400">Your account has been permanently deleted.</p>
+          <p className="text-gray-500 mt-2">Redirecting to home...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-ira-carbon-900 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-white mb-2">Delete Account</h1>
-          <p className="text-white/60">This action is permanent and cannot be undone.</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-black p-4">
+      <div className="max-w-md w-full bg-zinc-900 rounded-lg p-8">
+        <h1 className="text-2xl font-bold text-white mb-2">Delete Account</h1>
+        <p className="text-gray-400 mb-6">
+          This action is permanent and cannot be undone. All your data will be permanently deleted.
+        </p>
 
-        <div className="card p-6">
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-            <h3 className="font-bold text-red-400 mb-2">Warning: This will permanently delete:</h3>
-            <ul className="text-red-400/80 text-sm space-y-1">
-              <li>• Your profile and account</li>
-              <li>• All racing sessions and laps</li>
-              <li>• All telemetry data</li>
-              <li>• All AI coaching insights</li>
-            </ul>
+        <form onSubmit={handleDelete} className="space-y-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">
+              Enter your email address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white"
+              placeholder="your@email.com"
+              required
+            />
           </div>
 
-          <form onSubmit={handleDelete} className="space-y-4">
-            <div>
-              <label className="block text-white/70 text-sm mb-2">Your Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-lg bg-ira-carbon-800 border border-white/10 text-white placeholder-white/30 focus:border-ira-red focus:outline-none"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">
+              Type DELETE to confirm
+            </label>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white"
+              placeholder="DELETE"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-white/70 text-sm mb-2">Type DELETE to confirm</label>
-              <input
-                type="text"
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="DELETE"
-                className="w-full px-4 py-3 rounded-lg bg-ira-carbon-800 border border-white/10 text-white placeholder-white/30 focus:border-ira-red focus:outline-none"
-                required
-              />
-            </div>
+          {error && (
+            <p className="text-red-500 text-sm">{error}</p>
+          )}
 
-            {error && (
-              <div className="text-red-400 text-sm">{error}</div>
-            )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded transition-colors"
+          >
+            {isLoading ? 'Deleting...' : 'Delete My Account'}
+          </button>
 
-            <button
-              type="submit"
-              disabled={isLoading || confirmText !== 'DELETE'}
-              className="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? 'Deleting...' : 'Permanently Delete My Account'}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+          >
+            Cancel
+          </button>
+        </form>
 
-          <p className="text-center text-white/40 text-sm mt-6">
-            Changed your mind? <a href="/app" className="text-ira-red hover:underline">Go back to app</a>
-          </p>
-        </div>
+        <p className="text-xs text-gray-500 mt-6">
+          If you need help, contact us at support@ira-racing.com
+        </p>
       </div>
     </div>
   )
