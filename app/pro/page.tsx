@@ -17,7 +17,7 @@ export default async function ProAnalysisPage() {
     .select('*, tracks(name), laps(id, lap_time_ms, max_speed_kmh, is_best)')
     .eq('user_id', user.id)
     .order('session_date', { ascending: false })
-    .limit(20)
+    .limit(20) as { data: any[] | null }
 
   return (
     <div className="min-h-screen bg-ira-carbon-900">
