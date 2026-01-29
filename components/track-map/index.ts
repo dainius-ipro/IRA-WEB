@@ -1,4 +1,4 @@
 // components/track-map/index.ts
-export { TrackMap } from './TrackMap'
-export { LapSelector } from './LapSelector'
-export { TrackMapControls } from './TrackMapControls'
+export { default as TrackMap } from './TrackMap'
+export { default as LapSelector } from './LapSelector'
+export { default as TrackMapControls } from './TrackMapControls'
