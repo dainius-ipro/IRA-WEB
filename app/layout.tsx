@@ -1,4 +1,4 @@
-//app/layout.tsx - with Google Analytics
+// app/layout.tsx - with Google Analytics
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
