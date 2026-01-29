@@ -1,4 +1,32 @@
-// app/login/page.tsx
+'use client'
+
+import { useState, Suspense, useRef } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase/client'
+import { Mail, ArrowRight, Loader2, ArrowLeft } from 'lucide-react'
+
+function LoginContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/app'
+  
+  const [email, setEmail] = useState('')
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [codeSent, setCodeSent] = useState(false)
+  
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const supabase = getSupabaseClient()
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true)
+    setError(null)
+    
+    // app/login/page.tsx
 // IRA Web - Login Page with Google OAuth + OTP
 
 'use client'
