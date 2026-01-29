@@ -165,7 +165,7 @@ function MapTab({ telemetryPoints, laps, selectedLapIds, hasGpsData }: { telemet
         <h2 className="text-xl font-bold text-white">Track Map</h2>
         <span className="text-sm text-white/50">Speed heatmap: 🟢 Slow → 🟡 Mid → 🔴 Fast</span>
       </div>
-      <TrackMap telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} showHeatmap={true} showBeacons={true} interactive={true} className="h-[500px]" />
+      <TrackMap telemetryPoints={telemetryPoints} laps={laps} selectedLapIds={selectedLapIds} showHeatmap={true} className="h-[500px]" />
     </div>
   )
 }
