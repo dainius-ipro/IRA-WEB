@@ -1,4 +1,4 @@
-// app/layout.tsx - with Google Analytics
+kg// app/layout.tsx - with Google Analytics
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -21,7 +21,7 @@ export default function RootLayout({
       <head>
         {/* Google Analytics */}
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
+          src="https://www.googletagmanager.com/gtag/js?id=G-85YM4N7MNS"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
