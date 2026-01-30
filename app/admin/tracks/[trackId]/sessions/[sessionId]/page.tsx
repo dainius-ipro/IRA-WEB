@@ -19,7 +19,7 @@ export default async function AdminSessionProPage({
   if (!user) redirect('/login')
 
   // Get session with laps and track
-  const { data: session, error } = await supabase
+  const { data: sessionData, error } = await supabase
     .from('sessions')
     .select(`
       *,
@@ -41,9 +41,12 @@ export default async function AdminSessionProPage({
     .eq('id', sessionId)
     .single()
 
-  if (error || !session) {
+  if (error || !sessionData) {
     redirect(`/admin/tracks/${trackId}`)
   }
+
+  // Type assertion for session with laps
+  const session = sessionData as any
 
   // Sort laps by lap number
   const sortedLaps = [...(session.laps || [])].sort((a: any, b: any) => a.lap_number - b.lap_number)
