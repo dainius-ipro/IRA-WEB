@@ -1,5 +1,6 @@
+// Track detail with all sessions - click to Pro Studio view
+
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -44,8 +45,7 @@ export default async function AdminTrackDetailPage({
   params: Promise<{ trackId: string }>
 }) {
   const { trackId } = await params
-  const cookieStore = await cookies()
-  const supabase = createClient(cookieStore)
+  const supabase = await createClient()
 
   // Get track details
   const { data: trackData } = await supabase
