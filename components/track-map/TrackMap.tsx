@@ -1,4 +1,4 @@
-'use client'
+ko'use client'
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import maplibregl from 'maplibre-gl'
@@ -61,7 +61,7 @@ export default function TrackMap({
 
     // Satellite style with Maptiler
     const style = mapStyle === 'satellite' 
-      ? 'https://api.maptiler.com/maps/hybrid/style.json?key=get_free_key'
+      ? 'https://api.maptiler.com/maps/hybrid/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}'
       : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
     map.current = new maplibregl.Map({
