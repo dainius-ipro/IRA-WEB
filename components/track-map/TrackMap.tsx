@@ -7,10 +7,14 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 // Get MapTiler key from env
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY || ''
 
-interface TrackMapProps {
+// Default lap colors if not provided
+const DEFAULT_LAP_COLORS = ['#ef4444', '#22c55e', '#06b6d4', '#eab308', '#a855f7']
+
+export interface TrackMapProps {
   telemetryPoints: any[]
   laps: any[]
   selectedLapIds: string[]
+  lapColors?: string[]
   showHeatmap?: boolean
   className?: string
 }
@@ -19,6 +23,7 @@ export default function TrackMap({
   telemetryPoints, 
   laps,
   selectedLapIds,
+  lapColors = DEFAULT_LAP_COLORS,
   showHeatmap = true,
   className = 'h-[500px]'
 }: TrackMapProps) {
@@ -26,6 +31,15 @@ export default function TrackMap({
   const map = useRef<maplibregl.Map | null>(null)
   const [mapStyle, setMapStyle] = useState<'satellite' | 'streets'>('satellite')
   const [mapError, setMapError] = useState<string | null>(null)
+
+  // Create a map of lapId to color
+  const lapColorMap = useMemo(() => {
+    const colorMap: Record<string, string> = {}
+    selectedLapIds.forEach((lapId, index) => {
+      colorMap[lapId] = lapColors[index % lapColors.length]
+    })
+    return colorMap
+  }, [selectedLapIds, lapColors])
 
   const gpsPoints = useMemo(() => {
     let points = telemetryPoints.filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0)
@@ -45,6 +59,14 @@ export default function TrackMap({
     if (ratio < 0.33) return '#22c55e'
     if (ratio < 0.66) return '#eab308'
     return '#ef4444'
+  }
+
+  // Get color for a point - use lap color if multi-lap, otherwise speed heatmap
+  const getPointColor = (point: any): string => {
+    if (selectedLapIds.length > 1 && lapColorMap[point.lap_id]) {
+      return lapColorMap[point.lap_id]
+    }
+    return getSpeedColor(point.gps_speed_kmh || 0)
   }
 
   useEffect(() => {
@@ -97,10 +119,10 @@ export default function TrackMap({
         if (!map.current) return
         setMapError(null)
 
-        // Add heatmap segments
+        // Add track segments with colors
         const features = gpsPoints.slice(1).map((point, i) => ({
           type: 'Feature' as const,
-          properties: { color: getSpeedColor(point.gps_speed_kmh || 0) },
+          properties: { color: getPointColor(point) },
           geometry: {
             type: 'LineString' as const,
             coordinates: [
@@ -115,9 +137,11 @@ export default function TrackMap({
           data: { type: 'FeatureCollection', features }
         })
 
-        // Add colored segments
-        const colors = ['#22c55e', '#eab308', '#ef4444']
-        colors.forEach((color, idx) => {
+        // Get unique colors used
+        const uniqueColors = [...new Set(features.map(f => f.properties.color))]
+        
+        // Add layer for each color
+        uniqueColors.forEach((color, idx) => {
           map.current!.addLayer({
             id: `track-${idx}`,
             type: 'line',
@@ -140,7 +164,7 @@ export default function TrackMap({
     }
 
     return () => map.current?.remove()
-  }, [gpsPoints, mapStyle])
+  }, [gpsPoints, mapStyle, lapColorMap])
 
   if (gpsPoints.length === 0) {
     return <div className={`${className} flex items-center justify-center bg-ira-carbon-800 rounded-xl`}>
@@ -164,10 +188,32 @@ export default function TrackMap({
         </button>
       </div>
       <div ref={mapContainer} className={`${className} h-full rounded-xl overflow-hidden`} />
+      {/* Legend - show lap colors if multiple laps, otherwise speed heatmap */}
       <div className="absolute bottom-3 left-3 bg-black/70 rounded px-3 py-2 text-xs text-white">
-        <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Slow
-        <span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mx-1 ml-3"></span> Mid
-        <span className="inline-block w-3 h-3 rounded-full bg-red-500 mx-1 ml-3"></span> Fast
+        {selectedLapIds.length > 1 ? (
+          // Multi-lap legend
+          <div className="flex gap-3">
+            {selectedLapIds.map((lapId, idx) => {
+              const lap = laps.find(l => l.id === lapId)
+              return (
+                <span key={lapId} className="flex items-center gap-1">
+                  <span 
+                    className="inline-block w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: lapColors[idx % lapColors.length] }}
+                  />
+                  L{lap?.lap_number || idx + 1}
+                </span>
+              )
+            })}
+          </div>
+        ) : (
+          // Speed heatmap legend
+          <>
+            <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Slow
+            <span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mx-1 ml-3"></span> Mid
+            <span className="inline-block w-3 h-3 rounded-full bg-red-500 mx-1 ml-3"></span> Fast
+          </>
+        )}
       </div>
     </div>
   )
