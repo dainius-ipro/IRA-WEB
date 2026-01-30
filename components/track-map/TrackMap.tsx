@@ -61,7 +61,7 @@ export default function TrackMap({
 
     // Satellite style with Maptiler
     const style = mapStyle === 'satellite' 
-  ? `https://api.maptiler.com/maps/hybrid/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`
+  ? 'https://api.maptiler.com/maps/hybrid/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}'
   : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
 
