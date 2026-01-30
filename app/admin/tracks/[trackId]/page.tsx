@@ -1,6 +1,3 @@
- app/admin/tracks/[trackId]/page.tsx
-// Track detail with all sessions - click to Pro Studio view
-
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
