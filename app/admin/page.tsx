@@ -3,15 +3,14 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 
 export default async function AdminPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) redirect('/login')
-  
-  // TODO: Add admin role check
-  // if (!isAdmin(user)) redirect('/app')
 
   // Get all stats
   const [
@@ -27,7 +26,7 @@ export default async function AdminPage() {
     supabase.from('sessions').select('*', { count: 'exact', head: true }),
     supabase.from('laps').select('*', { count: 'exact', head: true }),
     supabase.from('tracks').select('*', { count: 'exact', head: true }),
-    supabase.from('tracks').select('*').order('name'),
+    supabase.from('tracks').select('*, sessions:sessions(count)').order('name').limit(5),
     supabase.from('sessions').select('*, profiles(full_name, email), tracks(name)').order('created_at', { ascending: false }).limit(10),
     supabase.from('sessions').select('user_id, profiles(full_name)').limit(100)
   ])
@@ -72,22 +71,36 @@ export default async function AdminPage() {
         <div className="grid md:grid-cols-2 gap-8">
           {/* Tracks List */}
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">🏁 All Tracks</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">🏁 Tracks</h2>
+              <Link 
+                href="/admin/tracks"
+                className="text-sm text-ira-red hover:text-ira-red/80 flex items-center gap-1"
+              >
+                View All <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
             <div className="card overflow-hidden">
               <table className="w-full">
                 <thead className="bg-ira-carbon-800">
                   <tr>
                     <th className="text-left py-3 px-4 text-white/50">Track</th>
                     <th className="text-left py-3 px-4 text-white/50">Country</th>
-                    <th className="text-left py-3 px-4 text-white/50">Length</th>
+                    <th className="text-right py-3 px-4 text-white/50">Sessions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tracks?.map((track: any) => (
-                    <tr key={track.id} className="border-t border-ira-carbon-700">
-                      <td className="py-3 px-4 text-white font-medium">{track.name}</td>
+                    <tr key={track.id} className="border-t border-ira-carbon-700 hover:bg-ira-carbon-700/30">
+                      <td className="py-3 px-4">
+                        <Link href={`/admin/tracks/${track.id}`} className="text-white font-medium hover:text-ira-red">
+                          {track.name}
+                        </Link>
+                      </td>
                       <td className="py-3 px-4 text-white/70">{track.country || '-'}</td>
-                      <td className="py-3 px-4 text-white/70">{track.length_meters ? `${track.length_meters}m` : '-'}</td>
+                      <td className="py-3 px-4 text-right text-ira-gold font-mono">
+                        {track.sessions?.[0]?.count || 0}
+                      </td>
                     </tr>
                   ))}
                   {(!tracks || tracks.length === 0) && (
@@ -100,22 +113,22 @@ export default async function AdminPage() {
 
           {/* Top Drivers */}
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">🏆 Top Drivers (by sessions)</h2>
+            <h2 className="text-xl font-bold text-white mb-4">🏆 Top Drivers</h2>
             <div className="card overflow-hidden">
               <table className="w-full">
                 <thead className="bg-ira-carbon-800">
                   <tr>
                     <th className="text-left py-3 px-4 text-white/50">#</th>
                     <th className="text-left py-3 px-4 text-white/50">Driver</th>
-                    <th className="text-left py-3 px-4 text-white/50">Sessions</th>
+                    <th className="text-right py-3 px-4 text-white/50">Sessions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedDrivers.map(([name, count]: any, idx: number) => (
+                  {sortedDrivers.map(([name, count], i) => (
                     <tr key={name} className="border-t border-ira-carbon-700">
-                      <td className="py-3 px-4 text-white/50">{idx + 1}</td>
+                      <td className="py-3 px-4 text-white/50">{i + 1}</td>
                       <td className="py-3 px-4 text-white font-medium">{name}</td>
-                      <td className="py-3 px-4 text-ira-gold">{count}</td>
+                      <td className="py-3 px-4 text-right text-ira-gold font-mono">{count as number}</td>
                     </tr>
                   ))}
                   {sortedDrivers.length === 0 && (
@@ -128,32 +141,48 @@ export default async function AdminPage() {
         </div>
 
         {/* Recent Sessions */}
-        <h2 className="text-xl font-bold text-white mb-4 mt-8">📊 Recent Sessions</h2>
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-ira-carbon-800">
-              <tr>
-                <th className="text-left py-3 px-4 text-white/50">Date</th>
-                <th className="text-left py-3 px-4 text-white/50">Driver</th>
-                <th className="text-left py-3 px-4 text-white/50">Track</th>
-                <th className="text-left py-3 px-4 text-white/50">Best Lap</th>
-                <th className="text-left py-3 px-4 text-white/50">Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentSessions?.map((s: any) => (
-                <tr key={s.id} className="border-t border-ira-carbon-700">
-                  <td className="py-3 px-4 text-white">{new Date(s.session_date).toLocaleDateString()}</td>
-                  <td className="py-3 px-4 text-white">{s.profiles?.full_name || s.profiles?.email || 'Unknown'}</td>
-                  <td className="py-3 px-4 text-white">{s.tracks?.name || s.name || '-'}</td>
-                  <td className="py-3 px-4 text-ira-gold font-mono">
-                    {s.best_lap_time_ms ? `${Math.floor(s.best_lap_time_ms/60000)}:${((s.best_lap_time_ms%60000)/1000).toFixed(3).padStart(6,'0')}` : '--'}
-                  </td>
-                  <td className="py-3 px-4 text-white/50 text-sm">{s.data_source || '-'}</td>
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-white mb-4">📊 Recent Sessions</h2>
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-ira-carbon-800">
+                <tr>
+                  <th className="text-left py-3 px-4 text-white/50">Session</th>
+                  <th className="text-left py-3 px-4 text-white/50">Driver</th>
+                  <th className="text-left py-3 px-4 text-white/50">Track</th>
+                  <th className="text-left py-3 px-4 text-white/50">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentSessions?.map((session: any) => (
+                  <tr key={session.id} className="border-t border-ira-carbon-700 hover:bg-ira-carbon-700/30">
+                    <td className="py-3 px-4 text-white font-medium">
+                      {session.tracks?.name ? (
+                        <Link 
+                          href={`/admin/tracks/${session.track_id}/sessions/${session.id}`}
+                          className="hover:text-ira-red"
+                        >
+                          {session.name || 'Unnamed'}
+                        </Link>
+                      ) : (
+                        session.name || 'Unnamed'
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-white/70">
+                      {session.profiles?.full_name || session.profiles?.email || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-white/70">{session.tracks?.name || '-'}</td>
+                    <td className="py-3 px-4 text-white/50">
+                      {new Date(session.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+                {(!recentSessions || recentSessions.length === 0) && (
+                  <tr><td colSpan={4} className="py-8 text-center text-white/50">No sessions yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
