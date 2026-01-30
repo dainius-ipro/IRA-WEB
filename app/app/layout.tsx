@@ -55,6 +55,12 @@ export default async function AppLayout({
               >
                 Sessions
               </Link>
+              <Link 
+                href="/pro" 
+                className="text-ira-gold hover:text-ira-gold/80 transition-colors text-sm font-medium flex items-center gap-1"
+              >
+                <span>⚡</span> Pro Studio
+              </Link>
             </div>
 
             {/* User Menu */}
