@@ -1,185 +1,93 @@
-import { createClient } from '@/lib/supabase/server'
+// app/admin/tracks/page.tsx
+// All Tracks List
+
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
-// Types
-interface Track {
-  id: string
-  name: string
-  country: string | null
-  length_meters: number | null
-}
+export default async function AdminTracksPage() {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) redirect('/login')
 
-interface Session {
-  id: string
-  session_date: string
-  status: string
-  best_lap_time: number | null
-  total_laps: number | null
-  profiles: {
-    display_name: string | null
-    email: string
-  } | null
-}
-
-function formatLapTime(seconds: number | null): string {
-  if (!seconds) return '-'
-  const mins = Math.floor(seconds / 60)
-  const secs = (seconds % 60).toFixed(3)
-  return `${mins}:${secs.padStart(6, '0')}`
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
-}
-
-export default async function AdminTrackDetailPage({
-  params
-}: {
-  params: Promise<{ trackId: string }>
-}) {
-  const { trackId } = await params
-  const supabase = await createClient()
-
-  // Get track details
-  const { data: trackData } = await supabase
+  // Get all tracks with session counts
+  const { data: tracks } = await supabase
     .from('tracks')
-    .select('*')
-    .eq('id', trackId)
-    .single()
-
-  const track = trackData as Track | null
-
-  if (!track) {
-    notFound()
-  }
-
-  // Get all sessions for this track
-  const { data: sessionsData } = await supabase
-    .from('sessions')
     .select(`
       id,
-      session_date,
-      status,
-      best_lap_time,
-      total_laps,
-      profiles (
-        display_name,
-        email
-      )
+      name,
+      country,
+      length_meters,
+      sessions:sessions(count)
     `)
-    .eq('track_id', trackId)
-    .order('session_date', { ascending: false })
+    .order('name')
 
-  const sessions = (sessionsData || []) as Session[]
+  const tracksList = (tracks || []) as any[]
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-zinc-500 mb-6">
-        <Link href="/admin" className="hover:text-white transition-colors">
-          Admin
-        </Link>
-        <span>/</span>
-        <Link href="/admin/tracks" className="hover:text-white transition-colors">
-          Tracks
-        </Link>
-        <span>/</span>
-        <span className="text-white">{track.name}</span>
-      </div>
-
-      {/* Track Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">🏁 {track.name}</h1>
-          <div className="flex items-center gap-4 text-zinc-400">
-            {track.country && <span>{track.country}</span>}
-            {track.length_meters && <span>{track.length_meters}m</span>}
-            <span>{sessions.length} sessions</span>
+    <div className="min-h-screen bg-ira-carbon-900">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Link 
+            href="/admin"
+            className="text-white/60 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-white">🏁 All Tracks</h1>
+            <p className="text-white/60">{tracksList.length} tracks in database</p>
           </div>
         </div>
-        <Link
-          href="/admin/tracks"
-          className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
-        >
-          ← Back to Tracks
-        </Link>
-      </div>
 
-      {/* Sessions Table */}
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-white">All Sessions</h2>
+        {/* Tracks Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tracksList.map((track) => {
+            const sessionCount = track.sessions?.[0]?.count || 0
+            return (
+              <Link
+                key={track.id}
+                href={`/admin/tracks/${track.id}`}
+                className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-ira-red/50 transition-all group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="text-4xl">🏎️</div>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    sessionCount > 0 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : 'bg-zinc-700/50 text-zinc-400'
+                  }`}>
+                    {sessionCount} sessions
+                  </div>
+                </div>
+                
+                <h3 className="text-xl font-bold text-white group-hover:text-ira-red transition-colors mb-2">
+                  {track.name}
+                </h3>
+                
+                <div className="flex items-center gap-4 text-sm text-white/50">
+                  {track.country && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {track.country}
+                    </div>
+                  )}
+                  {track.length_meters && (
+                    <div>{track.length_meters}m</div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </div>
 
-        {sessions.length === 0 ? (
-          <div className="p-8 text-center text-zinc-500">
-            No sessions found for this track
+        {tracksList.length === 0 && (
+          <div className="text-center py-12 text-white/50">
+            No tracks found
           </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-zinc-800/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Driver
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Laps
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Best Lap
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {sessions.map((session) => (
-                <tr key={session.id} className="hover:bg-zinc-800/50 transition-colors">
-                  <td className="px-4 py-4 text-white">
-                    {session.profiles?.display_name || session.profiles?.email || 'Unknown'}
-                  </td>
-                  <td className="px-4 py-4 text-zinc-300">
-                    {formatDate(session.session_date)}
-                  </td>
-                  <td className="px-4 py-4 text-zinc-300">
-                    {session.total_laps || '-'}
-                  </td>
-                  <td className="px-4 py-4 text-green-400 font-mono">
-                    {formatLapTime(session.best_lap_time)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      session.status === 'complete' 
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {session.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <Link
-                      href={`/admin/tracks/${trackId}/sessions/${session.id}`}
-                      className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-500 transition-colors"
-                    >
-                      Pro Studio →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )}
       </div>
     </div>
