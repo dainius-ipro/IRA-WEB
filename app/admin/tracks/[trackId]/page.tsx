@@ -34,15 +34,17 @@ export default async function AdminTrackDetailPage({
   if (!user) redirect('/login')
 
   // Get track details
-  const { data: track, error: trackError } = await supabase
+  const { data: trackData, error: trackError } = await supabase
     .from('tracks')
     .select('*')
     .eq('id', trackId)
     .single()
 
-  if (trackError || !track) {
+  if (trackError || !trackData) {
     notFound()
   }
+
+  const track = trackData as any
 
   // Get all sessions for this track
   const { data: sessions, error: sessionsError } = await supabase
