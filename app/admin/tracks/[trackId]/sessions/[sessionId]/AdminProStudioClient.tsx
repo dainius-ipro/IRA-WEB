@@ -244,7 +244,6 @@ export default function AdminProStudioClient({ session, trackId }: Props) {
             <div className="h-full overflow-auto p-4">
               <TelemetryCharts 
                 telemetryPoints={filteredTelemetry}
-                laps={session.laps as any}
                 selectedLapIds={selectedLapIds}
               />
             </div>
